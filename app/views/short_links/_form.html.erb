@@ -1,0 +1,28 @@
+<%= form_with model: short_link, url: short_links_path, class: "space-y-5" do |f| %>
+  <% if short_link.errors.any? %>
+    <div class="alert alert-danger">
+      <h6 class="alert-heading">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>Please fix these errors:
+      </h6>
+      <ul class="mb-0">
+        <% short_link.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <label for="destination" class="form-label fw-semibold">
+      <i class="bi bi-link me-1"></i>Long URL
+    </label>
+    <%= f.text_field :destination,
+        class: "form-control form-control-lg",
+        placeholder: "https://example.com/your/very/long/url",
+        required: true %>
+  </div>
+
+  <%= f.submit "✂️ Create Short Link",
+      class: "btn btn-success btn-lg w-100",
+      data: { disable_with: "Creating..." } %>
+<% end %>

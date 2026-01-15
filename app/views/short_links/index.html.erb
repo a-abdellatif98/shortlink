@@ -1,0 +1,293 @@
+<div class="container">
+  <!-- Hero Header -->
+  <div class="text-center mb-5">
+    <div class="mb-4">
+      <i class="bi bi-link-45deg" style="font-size: 5rem; color: white;"></i>
+    </div>
+    <h1 class="display-3 fw-bold text-white mb-3">ShortLink</h1>
+    <p class="lead text-white fs-4">Transform long URLs into short, memorable links</p>
+  </div>
+
+
+  <!-- API Testing Section -->
+  <div class="card glass-card text-white mb-4">
+    <div class="card-body p-4">
+      <div class="text-center mb-4">
+        <h2 class="fw-bold">
+          <i class="bi bi-code-slash me-2"></i>Test API Endpoints
+        </h2>
+        <p class="mb-0">Try our JSON API directly from your browser</p>
+      </div>
+
+      <div class="row g-4">
+        <!-- Encode API -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <div class="mb-3">
+                <span class="badge bg-success me-2">POST</span>
+                <code class="text-dark">/api/v1/encode</code>
+              </div>
+
+              <div class="mb-2">
+                <input
+                  type="text"
+                  id="api-url"
+                  class="form-control"
+                  value="https://github.com"
+                  placeholder="URL"
+                  />
+              </div>
+              <div class="mb-2">
+                <input
+                  type="text"
+                  id="api-slug"
+                  class="form-control"
+                  placeholder="Custom slug (optional)"
+                  />
+              </div>
+              <button onclick="EncodeAPI()" class="btn btn-success w-100">
+                <i class="bi bi-rocket-takeoff me-2"></i>Encode
+              </button>
+              <div id="encode-response" class="d-none mt-3">
+                <small class="text-muted">Response:</small>
+                <pre class="bg-dark text-success p-2 rounded small mb-0" style="max-height: 200px; overflow: auto;"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decode API -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <div class="mb-3">
+                <span class="badge bg-primary me-2">GET</span>
+                <code class="text-dark">/api/v1/decode/:slug</code>
+              </div>
+
+              <div class="mb-2">
+                <input
+                  type="text"
+                  id="api-decode"
+                  class="form-control"
+                  placeholder="Slug to decode"
+                  />
+              </div>
+              <button onclick="testDecodeAPI()" class="btn btn-primary w-100 mt-4">
+                <i class="bi bi-search me-2"></i>Test Decode
+              </button>
+              <div id="decode-response" class="d-none mt-3">
+                <small class="text-muted">Response:</small>
+                <pre class="bg-dark text-info p-2 rounded small mb-0" style="max-height: 200px; overflow: auto;"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flash Messages -->
+  <div id="flash_messages"></div>
+
+  <!-- Recent Links Section -->
+  <div id="recent_links" class="mt-4">
+    <% if @recent_links.any? %>
+      <div class="card glass-card text-white">
+        <div class="card-body p-4">
+          <h2 class="fw-bold mb-4">
+            <i class="bi bi-clock-history me-2"></i>Recent Links
+          </h2>
+
+          <div class="row g-3">
+            <% @recent_links.first(5).each do |link| %>
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div class="flex-grow-1">
+                        <div class="mb-2">
+                          <span class="badge <%= link.custom? ? 'bg-purple' : 'bg-info' %> me-2">
+                            <%= link.custom? ? "✨ Custom" : "🎲 Random" %>
+                          </span>
+                          <small class="text-muted"><%= time_ago_in_words(link.created_at) %> ago</small>
+                        </div>
+                        <div class="mb-2">
+                          <code class="fs-5 text-primary">
+                            <%= request.base_url %>/<%= link.slug %>
+                          </code>
+                        </div>
+                        <p class="text-muted mb-0 small text-truncate">
+                          <%= link.destination %>
+                        </p>
+                      </div>
+                      <button
+                        onclick="copyLink('<%= request.base_url %>/<%= link.slug %>')"
+                        class="btn btn-outline-primary btn-sm ms-3"
+                        title="Copy to clipboard"
+                      >
+                        <i class="bi bi-clipboard"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <script>
+      // Lookup ShortLink
+      async function lookupShortlink() {
+          const input = document.getElementById('lookup-input').value.trim();
+          const successDiv = document.getElementById('lookup-success');
+          const errorDiv = document.getElementById('lookup-error');
+
+          successDiv.classList.add('d-none');
+          errorDiv.classList.add('d-none');
+
+          if (!input) {
+              document.getElementById('error-text').textContent = 'Please enter a slug or URL';
+              errorDiv.classList.remove('d-none');
+              return;
+          }
+
+          let slug = input.includes('/') ? input.split('/').pop() : input;
+
+          try {
+              const response = await fetch(`/api/v1/decode/${slug}`);
+              const data = await response.json();
+
+              if (response.ok) {
+                  document.getElementById('found-slug').textContent = data.slug;
+                  document.getElementById('found-destination').textContent = data.destination;
+                  document.getElementById('found-type').textContent = data.custom ? 'Custom' : 'Random';
+                  document.getElementById('visit-link').href = data.destination;
+                  successDiv.classList.remove('d-none');
+              } else {
+                  document.getElementById('error-text').textContent = data.error || 'ShortLink not found';
+                  errorDiv.classList.remove('d-none');
+              }
+          } catch (error) {
+              document.getElementById('error-text').textContent = 'Connection error';
+              errorDiv.classList.remove('d-none');
+          }
+      }
+
+      async function EncodeAPI() {
+          const url = document.getElementById('api-url').value;
+          const slug = document.getElementById('api-slug').value;
+          const responseDiv = document.getElementById('encode-response');
+
+          const payload = {url};
+          if (slug) payload.slug = slug;
+
+          try {
+              const response = await fetch('/api/v1/encode', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify(payload)
+              });
+
+              const data = await response.json();
+              responseDiv.querySelector('pre').textContent = JSON.stringify(data, null, 2);
+              responseDiv.classList.remove('d-none');
+
+              if (data.slug) {
+                  document.getElementById('api-decode').value = data.slug;
+
+                  // Show success message and refresh recent links
+                  if (response.ok) {
+                      showFlashMessage(`✅ ShortLink created: ${data.short_url}`, 'success');
+                      await refreshRecentLinks();
+                  }
+              }
+          } catch (error) {
+              responseDiv.querySelector('pre').textContent = `Error: ${error.message}`;
+              responseDiv.classList.remove('d-none');
+          }
+      }
+
+      // Test Decode API
+      async function testDecodeAPI() {
+          const slug = document.getElementById('api-decode').value.trim();
+          const responseDiv = document.getElementById('decode-response');
+
+          if (!slug) {
+              responseDiv.querySelector('pre').textContent = 'Error: Please enter a slug';
+              responseDiv.classList.remove('d-none');
+              return;
+          }
+
+          try {
+              const response = await fetch(`/api/v1/decode/${slug}`);
+              const data = await response.json();
+              responseDiv.querySelector('pre').textContent = JSON.stringify(data, null, 2);
+              responseDiv.classList.remove('d-none');
+          } catch (error) {
+              responseDiv.querySelector('pre').textContent = `Error: ${error.message}`;
+              responseDiv.classList.remove('d-none');
+          }
+      }
+
+      // Copy to clipboard
+      function copyLink(text) {
+          navigator.clipboard.writeText(text).then(() => {
+              showFlashMessage('✅ Copied to clipboard!', 'success');
+          }).catch(() => {
+              alert('Failed to copy to clipboard');
+          });
+      }
+
+      // Show flash message
+      function showFlashMessage(message, type) {
+          const flashDiv = document.getElementById('flash_messages');
+          const alert = document.createElement('div');
+          alert.className = `alert alert-${type} alert-dismissible fade show`;
+          alert.innerHTML = `
+              <i class="bi bi-check-circle-fill me-2"></i>${message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          `;
+          flashDiv.innerHTML = '';
+          flashDiv.appendChild(alert);
+
+          // Auto-dismiss after 5 seconds
+          setTimeout(() => {
+              alert.remove();
+          }, 5000);
+      }
+
+      // Refresh recent links section
+      async function refreshRecentLinks() {
+          try {
+              const response = await fetch('/');
+              const html = await response.text();
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(html, 'text/html');
+              const newRecentLinks = doc.querySelector('#recent_links');
+              if (newRecentLinks) {
+                  const currentRecentLinks = document.querySelector('#recent_links');
+                  if (currentRecentLinks) {
+                      currentRecentLinks.replaceWith(newRecentLinks);
+                  }
+              }
+          } catch (error) {
+              console.error('Failed to refresh recent links:', error);
+          }
+      }
+
+      // Allow Enter key
+      document.getElementById('lookup-input')?.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') lookupShortlink();
+      });
+  </script>
+
+  <style>
+      .bg-purple {
+          background-color: #9333ea !important;
+      }
+  </style>
